@@ -5,14 +5,12 @@ interface ITransitionDir<State> {
     to: State;
 }
 
-export function BuildTransition<T>(from: T | T[] | '*', to: T): TransitionFunc<T> {
-    return () => {return {from, to}};
+type ITransitions<T, State> = {
+    [P in keyof T]: ITransitionDir<State>;
 }
 
-type TransitionFunc<T> = () => ITransitionDir<T>;
-
-type ITransitions<T, State> = {
-    [P in keyof T]: () => ITransitionDir<State>;
+export function BuildTransition<T>(from: T | T[] | '*', to: T): ITransitionDir<T> {
+    return {from, to};
 }
 
 type TransitionCall<T> = {
@@ -43,7 +41,7 @@ export class StateMachine<T, State> {
 
         this._transitions = {} as any;
         Object.keys(transitions).forEach(key => {
-            const func: TransitionFunc<State> = transitions[key];
+            const value: ITransitionDir<State>  = transitions[key];
             this._transitions[key] = (() => {
                 if (this._isTransiting) {
                     const reason = `This is transiting now. You cannot transition more times at one time.`;
@@ -52,7 +50,7 @@ export class StateMachine<T, State> {
                     return;
                 }
 
-                const {from, to} = func();
+                const {from, to} = value;
                 const curState = this._curState;
 
                 let isValid = false;
@@ -97,12 +95,12 @@ export class StateMachine<T, State> {
      * @param t 
      */
     can(t: keyof T) {
-        const func = this._originTransitions[t];
-        if (!func) {
+        const value = this._originTransitions[t];
+        if (!value) {
             return false;
         }
 
-        const {from} = func();
+        const {from} = value;
         return this._isCanTranState(from);
     }
 
