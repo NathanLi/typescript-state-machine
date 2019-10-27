@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "lib": [ "dom", "es6"],
+    "target": "es5",
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "preserveConstEnums": true,
+    "skipLibCheck": true
+  }
+}

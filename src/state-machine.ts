@@ -4,11 +4,7 @@ interface ITransitionDir<State> {
 }
 
 type ITransitions<T, State> = {
-    [P in keyof T]: ITransitionDir<State>;
-}
-
-export function BuildTransition<T>(from: T | T[] | '*', to: T): ITransitionDir<T> {
-    return {from, to};
+    [P in keyof T]: ITransitionDir<State> | ITransitionDir<State>[];
 }
 
 type TransitionCall<T> = {
@@ -18,6 +14,10 @@ type TransitionCall<T> = {
 interface STOptions<T, State> {
     init: State;
     transitions: ITransitions<T, State>;
+}
+
+export function BuildTransition<T>(from: T | T[] | '*', to: T): ITransitionDir<T> {
+    return {from, to};
 }
 
 export class StateMachine<T, State> {
@@ -46,20 +46,22 @@ export class StateMachine<T, State> {
         Object.keys(transitions).forEach(k => {
             const key = k as keyof T;
 
-            const value: ITransitionDir<State>  = transitions[key];
+            const value: ITransitionDir<State> | ITransitionDir<State>[] = transitions[key];
+
             this._transitions[key] = (() => {
+                if (!this.can(key)) {
+                    this.postError(1000, `You can not '${key}' now. Current state is ${this._curState}`);
+                    return;
+                }
+
                 if (this._isTransiting) {
                     this.postError(1011, `This is transiting now. You cannot transition more times at one time.`)
                     return;
                 }
 
-                const {to} = value;
                 const curState = this._curState;
-
-                if (!this.can(key)) {
-                    this.postError(1000, `You can not '${key}' to ${to} now. Current state is ${curState}`);
-                    return;
-                }
+                const dir = this._findDir(curState, value);
+                const {to} = dir;
 
                 this._isTransiting = true;
                 this.onBefore && this.onBefore(curState, to);
@@ -98,14 +100,33 @@ export class StateMachine<T, State> {
      * @param t 
      */
     can(t: keyof T) {
-        const value = this._originTransitions[t];
+        const value: ITransitionDir<State> | ITransitionDir<State>[] = this._originTransitions[t];
         if (!value) {
             return false;
         }
 
-        const {from} = value;
-        const isCan = this._isIncludeState(from, this._curState);
-        return isCan;
+        const dir = this._findDir(this._curState, value);
+        return dir != null;
+    }
+
+    private _findDir(from: State, dirs: ITransitionDir<State> | ITransitionDir<State>[]) {
+        if (Array.isArray(dirs)) {
+            return this._findDirOfArray(from, dirs);
+        }
+
+        if (this._isIncludeState(dirs.from, from)) {
+            return dirs;
+        }
+
+        return null;
+    }
+
+    private _findDirOfArray(from: State, dirs: (ITransitionDir<State>)[]) {
+        const index = dirs.findIndex(d => this._isIncludeState(d.from, from));
+        if (index >= 0) {
+            return dirs[index];
+        }
+        return null;
     }
 
     private _isIncludeState(state: State | State[] | '*', targetState: State) {
@@ -135,14 +156,22 @@ enum EQiuActionStatus {
 const option = {
     init: EQiuActionStatus.None,
     transitions: {
-        preace: BuildTransition([EQiuActionStatus.Standup, EQiuActionStatus.MyTurn, EQiuActionStatus.None], EQiuActionStatus.PreAction),
+        step: [
+            BuildTransition(EQiuActionStatus.None, EQiuActionStatus.PreAction),
+            BuildTransition(EQiuActionStatus.PreAction, EQiuActionStatus.MyTurn),
+            BuildTransition(EQiuActionStatus.MyTurn, EQiuActionStatus.Standup),
+            BuildTransition(EQiuActionStatus.Standup, EQiuActionStatus.None),
+        ],
         reset: BuildTransition('*', EQiuActionStatus.None),
     }
 };
 
 const fsm = new StateMachine(option);
 fsm.onAfter = console.log;
-fsm.onBefore = console.log;
+// fsm.onBefore = console.log;
 fsm.onError = console.error;
+fsm.transition().step();
+fsm.transition().step();
+fsm.transition().step();
+fsm.transition().step();
 fsm.transition().reset();
-fsm.transition().preace();
