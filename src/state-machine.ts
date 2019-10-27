@@ -1,5 +1,3 @@
-export const WILDCARD_FROM = '*';
-
 interface ITransitionDir<State> {
     from: State | State[] | '*';
     to: State;
@@ -31,39 +29,35 @@ export class StateMachine<T, State> {
 
     onBefore?: (from: State, to: State) => void;
     onAfter?: (from: State, to: State) => void;
-    onError?: (reason: any) => void;
+    onError?: (code: number, reason: string) => void;
 
     constructor(option: STOptions<T, State>) {
         const {init, transitions} = option;
 
         this._curState = init;
+        
+        this.setupTransitions(transitions);
+    }
+    
+    private setupTransitions(transitions: ITransitions<T, State>) {
         this._originTransitions = transitions;
-
         this._transitions = {} as any;
-        Object.keys(transitions).forEach(key => {
+
+        Object.keys(transitions).forEach(k => {
+            const key = k as keyof T;
+
             const value: ITransitionDir<State>  = transitions[key];
             this._transitions[key] = (() => {
                 if (this._isTransiting) {
-                    const reason = `This is transiting now. You cannot transition more times at one time.`;
-                    console.error(reason);
-                    this.onError && this.onError(reason);
+                    this.postError(1011, `This is transiting now. You cannot transition more times at one time.`)
                     return;
                 }
 
-                const {from, to} = value;
+                const {to} = value;
                 const curState = this._curState;
 
-                let isValid = false;
-                if ((from == WILDCARD_FROM)
-                    || (from == curState)
-                    || (Array.isArray(from) && (from.indexOf(curState) != -1))) {
-                    isValid = true;
-                }
-
-                if (!isValid) {
-                    const reason = `You can not '${key}' to ${to} now. Current state is ${curState}`;
-                    console.error(reason);
-                    this.onError && this.onError(reason);
+                if (!this.can(key)) {
+                    this.postError(1000, `You can not '${key}' to ${to} now. Current state is ${curState}`);
                     return;
                 }
 
@@ -74,6 +68,15 @@ export class StateMachine<T, State> {
                 this._isTransiting = false;
             });
         });
+    }
+
+    private postError(code: number, reason: string) {
+        this.logError(reason);
+        this.onError && this.onError(code, reason);
+    }
+
+    private logError(reason: any) {
+        console.error(reason);
     }
 
     transition() {
@@ -101,19 +104,20 @@ export class StateMachine<T, State> {
         }
 
         const {from} = value;
-        return this._isCanTranState(from);
+        const isCan = this._isIncludeState(from, this._curState);
+        return isCan;
     }
 
-    private _isCanTranState(state: State | State[] | '*') {
-        if (state === WILDCARD_FROM) {
+    private _isIncludeState(state: State | State[] | '*', targetState: State) {
+        if (state === '*') {
             return true;
         }
 
-        if (Array.isArray(state) && (state.indexOf(this._curState) != -1)) {
+        if (targetState === state) {
             return true;
         }
 
-        if (this._curState === state) {
+        if (Array.isArray(state) && (state.indexOf(targetState) != -1)) {
             return true;
         }
 
@@ -132,7 +136,7 @@ const option = {
     init: EQiuActionStatus.None,
     transitions: {
         preace: BuildTransition([EQiuActionStatus.Standup, EQiuActionStatus.MyTurn, EQiuActionStatus.None], EQiuActionStatus.PreAction),
-        reset: BuildTransition(WILDCARD_FROM, EQiuActionStatus.None),
+        reset: BuildTransition('*', EQiuActionStatus.None),
     }
 };
 
