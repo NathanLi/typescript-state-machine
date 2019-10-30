@@ -1,6 +1,7 @@
 interface ITransitionDir<State> {
     from: State | State[] | '*';
     to: State;
+    onTransition?: (from: State, to: State) => void;
 }
 
 type ITransitions<T, State> = {
@@ -16,8 +17,8 @@ interface STOptions<T, State> {
     transitions: ITransitions<T, State>;
 }
 
-export function BuildTransition<T>(from: T | T[] | '*', to: T): ITransitionDir<T> {
-    return {from, to};
+export function BuildTransition<T>(from: T | T[] | '*', to: T, onTransition?: (from: T, to: T) => void): ITransitionDir<T> {
+    return {from, to, onTransition};
 }
 
 export class StateMachine<T, State> {
@@ -61,12 +62,15 @@ export class StateMachine<T, State> {
 
                 const curState = this._curState;
                 const dir = this._findDir(curState, value);
-                const {to} = dir;
+                const {to, onTransition} = dir;
 
                 this._isTransiting = true;
                 this.onBefore && this.onBefore(curState, to);
+                onTransition && onTransition(curState, to);
                 this._curState = to;
                 this.onAfter && this.onAfter(curState, to);
+
+
                 this._isTransiting = false;
             });
         });
@@ -147,22 +151,22 @@ export class StateMachine<T, State> {
 }
 
 enum EQiuActionStatus {
-    None = 0,
-    PreAction = 1,
-    MyTurn = 2,
-    Standup = 3,
+    None = 'None',
+    PreAction = 'PreAction',
+    MyTurn = 'MyTurn',
+    Standup = 'Standup',
 }
 
 const option = {
     init: EQiuActionStatus.None,
     transitions: {
         step: [
-            BuildTransition(EQiuActionStatus.None, EQiuActionStatus.PreAction),
-            BuildTransition(EQiuActionStatus.PreAction, EQiuActionStatus.MyTurn),
-            BuildTransition(EQiuActionStatus.MyTurn, EQiuActionStatus.Standup),
-            BuildTransition(EQiuActionStatus.Standup, EQiuActionStatus.None),
+            BuildTransition(EQiuActionStatus.None, EQiuActionStatus.PreAction, console.log),
+            BuildTransition(EQiuActionStatus.PreAction, EQiuActionStatus.MyTurn, console.log),
+            BuildTransition(EQiuActionStatus.MyTurn, EQiuActionStatus.Standup, console.log),
+            BuildTransition(EQiuActionStatus.Standup, EQiuActionStatus.None, console.log),
         ],
-        reset: BuildTransition('*', EQiuActionStatus.None),
+        reset: BuildTransition('*', EQiuActionStatus.None, console.log),
     }
 };
 
