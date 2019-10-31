@@ -62,6 +62,12 @@ export class StateMachine<T, State> {
 
                 const curState = this._curState;
                 const dir = this._findDir(curState, value);
+
+                if (dir == null) {
+                    this.postError(1000, `You can not '${key}' now. Current state is ${this._curState}`);
+                    return;
+                }
+
                 const {to, onTransition} = dir;
 
                 this._isTransiting = true;
@@ -126,10 +132,13 @@ export class StateMachine<T, State> {
     }
 
     private _findDirOfArray(from: State, dirs: (ITransitionDir<State>)[]) {
-        const index = dirs.findIndex(d => this._isIncludeState(d.from, from));
-        if (index >= 0) {
-            return dirs[index];
+        for (const index in dirs) {
+            const dir = dirs[index];
+            if (this._isIncludeState(dir.from, from)) {
+                return dir;
+            }
         }
+
         return null;
     }
 
@@ -149,33 +158,3 @@ export class StateMachine<T, State> {
         return false;
     }
 }
-
-enum EQiuActionStatus {
-    None = 'None',
-    PreAction = 'PreAction',
-    MyTurn = 'MyTurn',
-    Standup = 'Standup',
-}
-
-const option = {
-    init: EQiuActionStatus.None,
-    transitions: {
-        step: [
-            BuildTransition(EQiuActionStatus.None, EQiuActionStatus.PreAction, console.log),
-            BuildTransition(EQiuActionStatus.PreAction, EQiuActionStatus.MyTurn, console.log),
-            BuildTransition(EQiuActionStatus.MyTurn, EQiuActionStatus.Standup, console.log),
-            BuildTransition(EQiuActionStatus.Standup, EQiuActionStatus.None, console.log),
-        ],
-        reset: BuildTransition('*', EQiuActionStatus.None, console.log),
-    }
-};
-
-const fsm = new StateMachine(option);
-fsm.onAfter = console.log;
-// fsm.onBefore = console.log;
-fsm.onError = console.error;
-fsm.transition().step();
-fsm.transition().step();
-fsm.transition().step();
-fsm.transition().step();
-fsm.transition().reset();

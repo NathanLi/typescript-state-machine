@@ -1,0 +1,28 @@
+{
+  "name": "typescript-state-machine",
+  "version": "1.0.0",
+  "description": "The state machine.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NathanLi/typescript-state-machine.git"
+  },
+  "keywords": [
+    "state machine"
+  ],
+  "author": "nathan",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NathanLi/typescript-state-machine/issues"
+  },
+  "homepage": "https://github.com/NathanLi/typescript-state-machine#readme",
+  "devDependencies": {
+    "@types/jest": "^24.0.21",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.1.0",
+    "typescript": "^3.6.4"
+  }
+}
