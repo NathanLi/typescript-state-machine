@@ -18,6 +18,7 @@ test('step transition', () => {
                 BuildTransition(EQiuActionStatus.Standup, EQiuActionStatus.None),
             ],
             reset: BuildTransition('*', EQiuActionStatus.None, (from, to) => console.log(from, to)),
+            goto: BuildTransition<EQiuActionStatus>('*', state => state,  (from, to) => expect(from === to))
         }
     };
 
@@ -38,6 +39,15 @@ test('step transition', () => {
 
     fsm.transition().reset();
     expect(fsm.state() === EQiuActionStatus.None);
+
+    fsm.transition().goto(EQiuActionStatus.MyTurn);
+    expect(fsm.state() === EQiuActionStatus.MyTurn);
+
+    fsm.transition().goto(EQiuActionStatus.Standup);
+    expect(fsm.state() === EQiuActionStatus.Standup);
+
+    fsm.transition().goto(EQiuActionStatus.PreAction);
+    expect(fsm.state() === EQiuActionStatus.PreAction);
 });
 
 

@@ -1,6 +1,9 @@
+type EGoToStateFunc<State> = (from: State) => State;
+type EToState<State> = State | EGoToStateFunc<State>;
+
 interface ITransitionDir<State> {
     from: State | State[] | '*';
-    to: State;
+    to: EToState<State>;
     onTransition?: (from: State, to: State) => void;
 }
 
@@ -8,8 +11,8 @@ type ITransitions<T, State> = {
     [P in keyof T]: ITransitionDir<State> | ITransitionDir<State>[];
 }
 
-type TransitionCall<T> = {
-    [P in keyof T]: () => void;
+type TransitionCall<T, State> = {
+    [P in keyof T]: (toState?: State) => void;
 };
 
 interface STOptions<T, State> {
@@ -17,12 +20,12 @@ interface STOptions<T, State> {
     transitions: ITransitions<T, State>;
 }
 
-export function BuildTransition<T>(from: T | T[] | '*', to: T, onTransition?: (from: T, to: T) => void): ITransitionDir<T> {
+export function BuildTransition<State>(from: State | State[] | '*', to: EToState<State>, onTransition?: (from: State, to: State) => void): ITransitionDir<State> {
     return {from, to, onTransition};
 }
 
 export class StateMachine<T, State> {
-    private _transitions: TransitionCall<T>;
+    private _transitions: TransitionCall<T, State>;
     private _curState: State;
     private _originTransitions: ITransitions<T, State>;
 
@@ -69,12 +72,13 @@ export class StateMachine<T, State> {
                 }
 
                 const {to, onTransition} = dir;
+                const toState = ((typeof to === 'function') ? ((to as EGoToStateFunc<State>)(curState)) : to);
 
                 this._isTransiting = true;
-                this.onBefore && this.onBefore(curState, to);
-                onTransition && onTransition(curState, to);
-                this._curState = to;
-                this.onAfter && this.onAfter(curState, to);
+                this.onBefore && this.onBefore(curState, toState);
+                onTransition && onTransition(curState, toState);
+                this._curState = toState;
+                this.onAfter && this.onAfter(curState, toState);
 
 
                 this._isTransiting = false;
