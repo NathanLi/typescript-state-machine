@@ -21,7 +21,7 @@
   "homepage": "https://github.com/NathanLi/typescript-state-machine#readme",
   "devDependencies": {
     "@types/jest": "^24.0.21",
-    "jest": "^24.9.0",
+    "jest": "^29.3.1",
     "ts-jest": "^29.0.3",
     "typescript": "^3.6.4"
   }
